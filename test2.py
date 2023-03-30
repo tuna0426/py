@@ -13,7 +13,7 @@ img = cv2.imread("piano.png")
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 # 二值化圖片
-ret, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV)
+#ret, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV)
 
 # 尋找輪廓
 contours, hierarchy = cv2.findContours(
