@@ -25,6 +25,7 @@ for cnt in contours:
     x, y, w, h = cv2.boundingRect(cnt)
     if w < 10 or h < 10:
         continue
+
     if float(w) / h < BLACK_WHITE_RATIO:
         # 黑鍵
         keys.append((x, y, w, h, "black"))
