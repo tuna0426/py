@@ -1,115 +1,125 @@
-import org.opencv.android.CameraBridgeViewBase;
-import org.opencv.android.JavaCameraView;
-import org.opencv.android.OpenCVLoader;
-import org.opencv.core.Core;
-import org.opencv.core.Mat;
-import org.opencv.core.Point;
-import org.opencv.core.Rect;
-import org.opencv.core.Scalar;
-import org.opencv.imgproc.Imgproc;
-import android.app.Activity;
+import androidx.appcompat.app.AppCompatActivity;
+
+import android.content.Context;
+import android.content.pm.PackageManager;
+import android.hardware.Camera;
 import android.media.AudioManager;
 import android.media.SoundPool;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.SurfaceView;
 import android.view.WindowManager;
 
-public class MainActivity extends Activity implements CameraBridgeViewBase.CvCameraViewListener2 {
+import org.opencv.android.BaseLoaderCallback;
+import org.opencv.android.CameraBridgeViewBase;
+import org.opencv.android.LoaderCallbackInterface;
+import org.opencv.android.OpenCVLoader;
+import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
+import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
+import org.opencv.core.Core;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfPoint;
+import org.opencv.core.Point;
+import org.opencv.core.Scalar;
+import org.opencv.core.Size;
+import org.opencv.imgproc.Imgproc;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class MainActivity extends AppCompatActivity implements CvCameraViewListener2 {
+
     private static final String TAG = "MainActivity";
-    private JavaCameraView mOpenCvCameraView;
+
+    private CameraBridgeViewBase mOpenCvCameraView;
+    private Mat mRgba;
+    private Mat mGray;
+    private Size mSize0;
+
+    // Define a SoundPool object
     private SoundPool mSoundPool;
+
+    // Define an array to hold the sound IDs
     private int[] mSoundIds;
-    private int mNumSounds = 8;
-    private Rect[] mKeys;
-    private int mKeyWidth = 80;
-    private int mKeyHeight = 400;
-    private int mKeySpacing = 20;
-    private int mNumKeys = 8;
 
-    static {
-        if (!OpenCVLoader.initDebug()) {
-            Log.e(TAG, "Failed to load OpenCV!");
-        }
-    }
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        setContentView(R.layout.activity_main);
-
-        mOpenCvCameraView = (JavaCameraView) findViewById(R.id.camera_view);
-        mOpenCvCameraView.setCvCameraViewListener(this);
-
-        mSoundPool = new SoundPool(mNumSounds, AudioManager.STREAM_MUSIC, 0);
-        mSoundIds = new int[mNumSounds];
+    // Initialize the SoundPool and load the sound files
+    private void initSound() {
+        mSoundPool = new SoundPool(3, AudioManager.STREAM_MUSIC, 0);
+        mSoundIds = new int[7];
         mSoundIds[0] = mSoundPool.load(this, R.raw.c4, 1);
         mSoundIds[1] = mSoundPool.load(this, R.raw.d4, 1);
         mSoundIds[2] = mSoundPool.load(this, R.raw.e4, 1);
         mSoundIds[3] = mSoundPool.load(this, R.raw.f4, 1);
         mSoundIds[4] = mSoundPool.load(this, R.raw.g4, 1);
         mSoundIds[5] = mSoundPool.load(this, R.raw.a4, 1);
-        mSoundIds[6] = mSoundPool.load(this, R.raw.c5, 1);
-        mSoundIds[7] = mSoundPool.load(this, R.raw.b4, 1);
+        mSoundIds[6] = mSoundPool.load(this, R.raw.b4, 1);
+    }
 
-        mKeys = new Rect[mNumKeys];
-        for (int i = 0; i < mNumKeys; i++) {
-            int x = (i + 1) * mKeySpacing + i * mKeyWidth;
-            int y = 0;
-            mKeys[i] = new Rect(x, y, x + mKeyWidth, y + mKeyHeight);
+    // Release the SoundPool and free up resources
+    private void releaseSound() {
+        mSoundPool.release();
+        mSoundPool = null;
+        mSoundIds = null;
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        setContentView(R.layout.activity_main);
+
+        if (getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA)) {
+            mOpenCvCameraView = findViewById(R.id.main_surface);
+            mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
+            mOpenCvCameraView.setCvCameraViewListener(this);
         }
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        if (mOpenCvCameraView != null) {
+        if (mOpenCvCameraView != null)
             mOpenCvCameraView.disableView();
-        }
+        releaseSound();
     }
 
     @Override
     public void onResume() {
-        super.onResume();
-        if (!OpenCVLoader.initDebug()) {
-            Log.e(TAG, "Failed to load OpenCV!");
-        } else {
-            mOpenCvCameraView.enableView();
-        }
+    super.onResume();
+    initSound();
+    if (!OpenCVLoader.initDebug()) {
+        Log.d(TAG, "Internal OpenCV library not found.");
+        OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
+    } else {
+        Log.d(TAG, "OpenCV library found inside package. Using it!");
+        mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
     }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        if (mOpenCvCameraView != null) {
-            mOpenCvCameraView.disableView();
-        }
-    }
-
-   @Override
-public void onCameraViewStarted(int width, int height) {
-    Log.i(TAG, "Camera view started");
 }
 
-@Override
-public void onCameraViewStopped() {
-    Log.i(TAG, "Camera view stopped");
-}
-
-
+private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
     @Override
-    public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
-        Mat rgba = inputFrame.rgba();
-        Imgproc.cvtColor(rgba, rgba, Imgproc.COLOR_RGBA2GRAY);
-        Core.flip(rgba, rgba, 1);
-        for (int i = 0; i < mNumKeys; i++) {
-            Rect key = mKeys[i];
-            Mat roi = rgba.submat(key);
-            Scalar mean = Core.mean(roi);
-            if (mean.val[0] < 50) {
-                mSoundPool.play(mSoundIds[i], 1, 1, 1, 0, 1);
+    public void onManagerConnected(int status) {
+        switch (status) {
+            case LoaderCallbackInterface.SUCCESS: {
+                Log.i(TAG, "OpenCV loaded successfully");
+                // Load native library after(!) OpenCV initialization
+                System.loadLibrary("detection_based_tracker");
+                mOpenCvCameraView.enableView();
+                break;
+            }
+            default: {
+                super.onManagerConnected(status);
+                break;
             }
         }
-        return rgba;
     }
+};
+
+private void initSound() {
+    mSoundPool = new SoundPool(4, AudioManager.STREAM_MUSIC, 0);
+    mSoundPoolMap = new HashMap<Integer, Integer>();
+    mAudioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
 }
+
+
