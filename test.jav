@@ -86,13 +86,16 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         }
     }
 
-    @Override
-    public void onCameraViewStarted(int width, int height) {
-    }
+   @Override
+public void onCameraViewStarted(int width, int height) {
+    Log.i(TAG, "Camera view started");
+}
 
-    @Override
-    public void onCameraViewStopped() {
-    }
+@Override
+public void onCameraViewStopped() {
+    Log.i(TAG, "Camera view stopped");
+}
+
 
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
